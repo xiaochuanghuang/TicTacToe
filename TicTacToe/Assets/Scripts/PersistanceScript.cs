@@ -5,6 +5,7 @@ using UnityEngine;
 public class PersistanceScript : MonoBehaviour
 {
     public string GameMode;
+    public string AIDifficulty;
 
     private void Awake()
     {

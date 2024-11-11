@@ -27,7 +27,7 @@ public class GameScript : MonoBehaviour
     private Vector2 positionStart, positionEnd;
 
     private bool isPlayerTurn;
-
+    private int aiDepthLimit = 1;
     private void Awake()
     {
         GameObject persistentObj = GameObject.FindGameObjectWithTag("PersistantObj");
@@ -35,12 +35,22 @@ public class GameScript : MonoBehaviour
         if (persistentObj != null)
         {
             GameMode = persistentObj.GetComponent<PersistanceScript>().GameMode;
-        }
-        else
-        {
-            GameMode = "PVE";
-        }
+            string AIDifficulty = persistentObj.GetComponent<PersistanceScript>().AIDifficulty;
 
+            // 设置不同难度的深度限制
+            if (AIDifficulty == "Easy")
+            {
+                aiDepthLimit = 1;
+            }
+            else if (AIDifficulty == "Medium")
+            {
+                aiDepthLimit = 2;
+            }
+            else if (AIDifficulty == "Hard")
+            {
+                aiDepthLimit = 9;
+            }
+        }
         Player2Role.text = GameMode == "PVE" ? "AI" : "Player 2";
         currentTurn = Seed.CROSS;
         Instructions.text = "Turn: Player 1";
@@ -167,7 +177,7 @@ public class GameScript : MonoBehaviour
         currentTurn = Seed.EMPTY;
         Instructions.text = resultMessage;
 
-        // 显示胜利的Line
+        // 胜利之后把链接的区域用图片表示Line
         if (resultMessage != "Draw")
         {
             float slope = CalculateLineRotation();
@@ -240,16 +250,18 @@ public class GameScript : MonoBehaviour
         return positionStart.x > 0 ? -45f : 45f;
     }
 
-    private int MiniMax(Seed currentPlayer, Seed[] board, int alpha, int beta)
+    private int MiniMax(Seed currentPlayer, Seed[] board, int alpha, int beta, int depth = 0)
     {
-        // 检查游戏是否结束并返回相应的评分
+        // 如果达到了最大深度，返回平局分数 0
+        if (depth >= aiDepthLimit) return 0;
+
         if (IsDraw()) return 0;
         if (CheckWin(Seed.NOUGHT)) return 1;
         if (CheckWin(Seed.CROSS)) return -1;
 
         int bestScore;
-        // AI的回合，最大化分数
-        if (currentPlayer == Seed.NOUGHT)
+        // AI 的回合，最大化分数
+        if (currentPlayer == Seed.NOUGHT) 
         {
             bestScore = int.MinValue;
             for (int i = 0; i < 9; i++)
@@ -257,14 +269,12 @@ public class GameScript : MonoBehaviour
                 if (board[i] == Seed.EMPTY)
                 {
                     board[i] = Seed.NOUGHT;
-                    // 递归调用 MiniMax，切换到玩家回合
-                    int score = MiniMax(Seed.CROSS, board, alpha, beta);
+                    int score = MiniMax(Seed.CROSS, board, alpha, beta, depth + 1);
                     board[i] = Seed.EMPTY;
                     bestScore = Mathf.Max(bestScore, score);
                     alpha = Mathf.Max(alpha, score);
-
-                    // Alpha-Beta 剪枝：如果当前 Alpha 超过 Beta，则提前结束循环
-                    if (alpha >= beta) break;
+                    // Alpha-Beta 剪枝
+                    if (alpha >= beta) break; 
                 }
             }
             return bestScore;
@@ -278,14 +288,16 @@ public class GameScript : MonoBehaviour
                 if (board[i] == Seed.EMPTY)
                 {
                     board[i] = Seed.CROSS;
-                    int score = MiniMax(Seed.NOUGHT, board, alpha, beta);
+
+                    int score = MiniMax(Seed.NOUGHT, board, alpha, beta, depth + 1);
                     board[i] = Seed.EMPTY;
                     bestScore = Mathf.Min(bestScore, score);
                     beta = Mathf.Min(beta, score);
-                    if (alpha >= beta) break;
+                    if (alpha >= beta) break; 
                 }
             }
             return bestScore;
         }
     }
+
 }
