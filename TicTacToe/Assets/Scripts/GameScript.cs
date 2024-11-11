@@ -1,8 +1,7 @@
 ﻿using System.Collections;
-using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
-using UnityEngine.SocialPlatforms.Impl;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 public class GameScript : MonoBehaviour
@@ -11,268 +10,282 @@ public class GameScript : MonoBehaviour
     public GameObject Cross;
     public GameObject Nought;
     public GameObject Line;
-    public TextMeshProUGUI Instrcutions;
+    public TextMeshProUGUI Instructions;
     public TextMeshProUGUI Player2Role;
 
-    public enum Seed {EMPTY, CROSS, NOUGHT };
+    // 新增按钮引用
+    public Button RestartButton;
+    public Button MainMenuButton;
 
-    Seed Turn;
+    //棋盘中的三种情况
+    public enum Seed { EMPTY, CROSS, NOUGHT }
+    private Seed currentTurn;
 
     public GameObject[] AllSpawns = new GameObject[9];
-    public Seed[] Player = new Seed[9];
+    public Seed[] BoardState = new Seed[9];
 
-    Vector2 Position1, Position2;
+    private Vector2 positionStart, positionEnd;
 
+    private bool isPlayerTurn;
 
     private void Awake()
     {
-        GameObject PersistantObj = GameObject.FindGameObjectWithTag("PersistantObj") as GameObject;
-        GameMode = PersistantObj.GetComponent<PersistanceScript>().GameMode;
-        Destroy(PersistantObj);
+        GameObject persistentObj = GameObject.FindGameObjectWithTag("PersistantObj");
+        isPlayerTurn = true;
+        if (persistentObj != null)
+        {
+            GameMode = persistentObj.GetComponent<PersistanceScript>().GameMode;
+        }
+        else
+        {
+            GameMode = "PVE";
+        }
 
-        if (GameMode == "PVE") Player2Role.text = "AI";
-        else Player2Role.text = "Player 2";
+        Player2Role.text = GameMode == "PVE" ? "AI" : "Player 2";
+        currentTurn = Seed.CROSS;
+        Instructions.text = "Turn: Player 1";
 
-        //Set Turn as Player 1 with the Cross
-        Turn = Seed.CROSS;
-
-        Instrcutions.text = "Turn: Player 1";
+        // 初始化棋盘
         for (int i = 0; i < 9; i++)
         {
-            Player[i] = Seed.EMPTY;
+            BoardState[i] = Seed.EMPTY;
         }
+
+        // 隐藏重启和返回主菜单按钮
+        RestartButton.gameObject.SetActive(false);
+        MainMenuButton.gameObject.SetActive(false);
+
+        RestartButton.onClick.AddListener(RestartGame);
+        MainMenuButton.onClick.AddListener(ReturnToMainMenu);
     }
 
     public void Spawn(GameObject EmptyCell, int id)
     {
-        if(Turn == Seed.CROSS)
+        if (!isPlayerTurn) return;
+        if (currentTurn == Seed.CROSS)
         {
+            PlayerMove(EmptyCell, id, Seed.CROSS);
 
-            AllSpawns[id] = Instantiate(Cross,EmptyCell.transform.position,Quaternion.identity);
-            Player[id] = Turn; 
-
-            if(Win(Turn))
+            // 检查是否平局或胜利，如果没有则自动调用 AI 回合
+            if (currentTurn == Seed.NOUGHT && GameMode == "PVE" && !IsDraw() && !CheckWin(Seed.CROSS))
             {
-                Turn = Seed.EMPTY;
-                Instrcutions.text = "Player 1 Win!";
-                float Slope = CalculateRotation();
-                Instantiate(Line,CalculateCenter(),Quaternion.Euler(0,0,Slope));
-            }
-            else
-            {
-                Turn = Seed.NOUGHT;
-                Instrcutions.text = "Turn: " + Player2Role.text;
-            }
-            
-
-           
-        }
-        else if (Turn == Seed.NOUGHT && GameMode == "PVP")
-        {
-
-            AllSpawns[id] = Instantiate(Nought, EmptyCell.transform.position, Quaternion.identity);
-            Player[id] = Turn;
-            if (Win(Turn))
-            {
-                Turn = Seed.EMPTY;
-                Instrcutions.text = Player2Role.text + " Win!";
-                float Slope = CalculateRotation();
-                Instantiate(Line, CalculateCenter(), Quaternion.Euler(0, 0, Slope));
-
-            }
-            else
-            {
-                Turn = Seed.CROSS;
-                Instrcutions.text = "Turn: Player 1";
+                isPlayerTurn = false; // 禁用玩家输入
+                StartCoroutine(DelayedAIMove(0.5f));
             }
         }
-        if (Turn == Seed.NOUGHT && GameMode == "PVE")
+        else if (currentTurn == Seed.NOUGHT && GameMode == "PVP")
         {
-            Instrcutions.text = "Turn: " + Player2Role.text; // 显示 AI 的回合信息
-                int BestScore = -1;
-                int BestPosition = -1;
-                int CurrentScore;
-                for(int i = 0; i < 9; i++)
-                {
-                    if (Player[i] == Seed.EMPTY)
-                    {
-                        Player[i] = Seed.NOUGHT;
-                        CurrentScore = MiniMax(Seed.CROSS,Player, int.MinValue, int.MaxValue);
-                        Player[i] = Seed.EMPTY;
-
-                        if(BestScore < CurrentScore)
-                        {
-                            BestScore = CurrentScore;
-                            BestPosition = i;
-                        }
-                    }
-                }
-                if(BestScore > -1)
-                {
-                    AllSpawns[BestPosition] = Instantiate(Nought, AllSpawns[BestPosition].transform.position, Quaternion.identity);
-                    Player[BestPosition] = Turn;
-                }
-               
-            if (Win(Turn))
-            {
-                Turn = Seed.EMPTY;
-                Instrcutions.text = Player2Role.text + " Win!";
-                float Slope = CalculateRotation();
-                Instantiate(Line, CalculateCenter(), Quaternion.Euler(0, 0, Slope));
-
-            }
-            else
-            {
-                Turn = Seed.CROSS;
-                Instrcutions.text = "Turn: Player 1";
-            }
-        }
-      
-
-        if (IsDraw())
-        {
-            Turn = Seed.EMPTY;
-            Instrcutions.text = "Draw";
+            PlayerMove(EmptyCell, id, Seed.NOUGHT);
         }
 
+        // 销毁当前单元格
         Destroy(EmptyCell);
+
+        // 检查是否为平局
+        if (IsDraw() && currentTurn != Seed.EMPTY)
+        {
+            EndGame("Draw"); 
+        }
+    }
+    // 延迟 AI 回合的协程
+    private IEnumerator DelayedAIMove(float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        StartCoroutine(AIMove());
     }
 
-    bool IsAnyEmpty()
+    private void PlayerMove(GameObject cell, int id, Seed playerSeed)
     {
-        bool bEmpty = false;
+        GameObject piece = playerSeed == Seed.CROSS ? Cross : Nought;
+        AllSpawns[id] = Instantiate(piece, cell.transform.position, Quaternion.identity);
+        BoardState[id] = playerSeed;
 
-        for(int  i = 0; i < 9; i++)
+        if (CheckWin(playerSeed))
         {
-            if(Player[i] == Seed.EMPTY)
-            {
-                bEmpty = true;
-                break;
-            }
-               
-        }
-        return bEmpty;
-    }
-
-    bool Win(Seed CurrentPlayer)
-    {
-        bool bIsWon = false;
-
-        int[,] AllConditions = new int[8, 3]{ {0,1,2 }, { 3, 4, 5 }, { 6, 7, 8 },
-                                              {0,3,6 }, { 1, 4, 7 }, { 2, 5, 8 },
-                                              {0,4,8 }, { 2, 4, 6 }};
-
-        for (int i = 0; i < 8; i++)
-        {
-            if(Player[AllConditions[i,0]] ==CurrentPlayer&&
-                Player[AllConditions[i, 1]] == CurrentPlayer &&
-                Player[AllConditions[i, 2]] == CurrentPlayer)
-            {
-                bIsWon = true; 
-                Position1 = AllSpawns[AllConditions[i, 0]].transform.position;
-                Position2 = AllSpawns[AllConditions[i, 2]].transform.position;
-                break;
-            }
-        }
-        return bIsWon;
-    }
-
-    bool IsDraw()
-    {
-        bool bPlayer1Win = Win(Seed.CROSS);
-        bool bPlayer2Win = Win(Seed.NOUGHT);
-        bool bEmptySpace = IsAnyEmpty();
-
-        bool bIsDraw = false;
-
-        if (bPlayer1Win == false && bPlayer2Win == false&& bEmptySpace == false) 
-        { 
-            bIsDraw = true; 
-        }
-        return bIsDraw;
-
-    }
-
-    Vector2 CalculateCenter()
-    {
-        float x = (Position1.x + Position2.x) / 2;
-        float y = (Position1.y + Position2.y) / 2;
-
-        return new Vector2(x, y);
-    }
-    float CalculateRotation()
-    {
-        float slope = 0.0f;
-
-        if(Position1.x == Position2.x)
-        {
-            slope = 0.0f;
-        }
-        else if(Position1.y == Position2.y) 
-        {
-                slope = 90.0f;
-        }
-        else if(Position1.x > 0.0f)
-        {
-            slope = -45.0f;
+            EndGame(playerSeed == Seed.CROSS ? "Player 1 Win!" : $"{Player2Role.text} Win!");
         }
         else
-        slope = 45.0f;
-        return slope;
-
+        {
+            currentTurn = playerSeed == Seed.CROSS ? Seed.NOUGHT : Seed.CROSS;
+            Instructions.text = "Turn: " + (currentTurn == Seed.CROSS ? "Player 1" : Player2Role.text);
+        }
     }
 
-    int MiniMax(Seed CurrentPlayer, Seed[] Board, int Alpha, int Beta)
+    private IEnumerator AIMove()
     {
+        // 显示 AI 的回合信息
+        Instructions.text = "Turn: " + Player2Role.text; 
+
+        int bestScore = int.MinValue;
+        int bestMove = -1;
+
+        for (int i = 0; i < 9; i++)
+        {
+            if (BoardState[i] == Seed.EMPTY)
+            {
+                BoardState[i] = Seed.NOUGHT;
+                int score = MiniMax(Seed.CROSS, BoardState, int.MinValue, int.MaxValue);
+                BoardState[i] = Seed.EMPTY;
+
+                if (score > bestScore)
+                {
+                    bestScore = score;
+                    bestMove = i;
+                }
+            }
+        }
+        //找到生成位置生成圈圈
+        if (bestMove >= 0)
+        {
+            Vector3 spawnPosition = AllSpawns[bestMove] != null ? AllSpawns[bestMove].transform.position : Vector3.zero;
+            AllSpawns[bestMove] = Instantiate(Nought, spawnPosition, Quaternion.identity);
+            BoardState[bestMove] = Seed.NOUGHT;
+        }
+
+        if (CheckWin(Seed.NOUGHT))
+        {
+            EndGame($"{Player2Role.text} Win!");
+        }
+        else if (!IsDraw())
+        {
+            currentTurn = Seed.CROSS;
+            Instructions.text = "Turn: Player 1"; 
+            isPlayerTurn = true; 
+        }
+        else
+        {
+            currentTurn = Seed.EMPTY;
+            Instructions.text = "Draw";
+            // 游戏结束，禁用玩家输入
+            isPlayerTurn = false;
+        }
+
+        yield break; 
+    }
+    private void EndGame(string resultMessage)
+    {
+        currentTurn = Seed.EMPTY;
+        Instructions.text = resultMessage;
+
+        // 显示胜利的Line
+        if (resultMessage != "Draw")
+        {
+            float slope = CalculateLineRotation();
+            Instantiate(Line, CalculateCenterPosition(), Quaternion.Euler(0, 0, slope));
+        }
+
+        // 显示按钮
+        RestartButton.gameObject.SetActive(true);
+        MainMenuButton.gameObject.SetActive(true);
+    }
+    private void RestartGame()
+    {
+        SceneManager.LoadScene(SceneManager.GetActiveScene().name); 
+    }
+
+    private void ReturnToMainMenu()
+    {
+        // 销毁 PersistentObj，确保返回主菜单时重新创建并选择新的模式
+        GameObject persistentObj = GameObject.FindGameObjectWithTag("PersistantObj");
+        if (persistentObj != null)
+        {
+            Destroy(persistentObj);
+        }
+
+        SceneManager.LoadScene("MainMenu");
+    }
+
+    private bool CheckWin(Seed player)
+    {
+        int[,] winConditions = new int[8, 3]
+        {
+            {0, 1, 2}, {3, 4, 5}, {6, 7, 8},
+            {0, 3, 6}, {1, 4, 7}, {2, 5, 8},
+            {0, 4, 8}, {2, 4, 6}
+        };
+
+        for (int i = 0; i < winConditions.GetLength(0); i++)
+        {
+            if (BoardState[winConditions[i, 0]] == player &&
+                BoardState[winConditions[i, 1]] == player &&
+                BoardState[winConditions[i, 2]] == player)
+            {
+                positionStart = AllSpawns[winConditions[i, 0]].transform.position;
+                positionEnd = AllSpawns[winConditions[i, 2]].transform.position;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private bool IsDraw()
+    {
+        foreach (var spot in BoardState)
+        {
+            if (spot == Seed.EMPTY) return false;
+        }
+        return !CheckWin(Seed.CROSS) && !CheckWin(Seed.NOUGHT);
+    }
+
+    private Vector2 CalculateCenterPosition()
+    {
+        return (positionStart + positionEnd) / 2;
+    }
+
+    //计算Line的旋转
+    private float CalculateLineRotation()
+    {
+        if (positionStart.x == positionEnd.x) return 0f;
+        if (positionStart.y == positionEnd.y) return 90f;
+        return positionStart.x > 0 ? -45f : 45f;
+    }
+
+    private int MiniMax(Seed currentPlayer, Seed[] board, int alpha, int beta)
+    {
+        // 检查游戏是否结束并返回相应的评分
         if (IsDraw()) return 0;
-        if (Win(Seed.NOUGHT)) return 1;
-        if (Win(Seed.CROSS)) return -1;
+        if (CheckWin(Seed.NOUGHT)) return 1;
+        if (CheckWin(Seed.CROSS)) return -1;
 
-        int Score;
-
-        if (CurrentPlayer == Seed.NOUGHT)
+        int bestScore;
+        // AI的回合，最大化分数
+        if (currentPlayer == Seed.NOUGHT)
         {
+            bestScore = int.MinValue;
             for (int i = 0; i < 9; i++)
             {
-                if (Board[i] == Seed.EMPTY)
+                if (board[i] == Seed.EMPTY)
                 {
-                    Board[i] = Seed.NOUGHT;
-                    Score = MiniMax(Seed.CROSS, Board, Alpha, Beta);
-                    Board[i] = Seed.EMPTY;
+                    board[i] = Seed.NOUGHT;
+                    // 递归调用 MiniMax，切换到玩家回合
+                    int score = MiniMax(Seed.CROSS, board, alpha, beta);
+                    board[i] = Seed.EMPTY;
+                    bestScore = Mathf.Max(bestScore, score);
+                    alpha = Mathf.Max(alpha, score);
 
-                    if(Score > Alpha)
-                    {
-                        Alpha = Score;
-                    }
-                    if (Alpha > Beta)
-                        break;
+                    // Alpha-Beta 剪枝：如果当前 Alpha 超过 Beta，则提前结束循环
+                    if (alpha >= beta) break;
                 }
             }
-            return Alpha;
+            return bestScore;
         }
+        // 玩家回合，最小化分数
         else
         {
+            bestScore = int.MaxValue;
             for (int i = 0; i < 9; i++)
             {
-                if (Board[i] == Seed.EMPTY)
+                if (board[i] == Seed.EMPTY)
                 {
-                    Board[i] = Seed.CROSS;
-                    Score = MiniMax(Seed.NOUGHT, Board, Alpha, Beta);
-                    Board[i] = Seed.EMPTY;
-
-                    if (Score < Beta)
-                    {
-                        Beta = Score;
-                    }
-                    if (Alpha > Beta)
-                        break;
+                    board[i] = Seed.CROSS;
+                    int score = MiniMax(Seed.NOUGHT, board, alpha, beta);
+                    board[i] = Seed.EMPTY;
+                    bestScore = Mathf.Min(bestScore, score);
+                    beta = Mathf.Min(beta, score);
+                    if (alpha >= beta) break;
                 }
             }
-            return Beta;
+            return bestScore;
         }
     }
-            
-        
-
-
-    }
+}
