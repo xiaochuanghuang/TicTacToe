@@ -560,7 +560,6 @@ GameObject:
   - component: {fileID: 313193619}
   - component: {fileID: 313193618}
   - component: {fileID: 313193617}
-  - component: {fileID: 313193616}
   m_Layer: 5
   m_Name: MainMenu
   m_TagString: Untagged
@@ -588,18 +587,6 @@ RectTransform:
   m_AnchoredPosition: {x: -310, y: 320.00003}
   m_SizeDelta: {x: 260, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
---- !u!114 &313193616
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 313193614}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 233309499685e704291ab735433ebeef, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!114 &313193617
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -643,19 +630,7 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 313193618}
   m_OnClick:
     m_PersistentCalls:
-      m_Calls:
-      - m_Target: {fileID: 313193616}
-        m_TargetAssemblyTypeName: QuitGame, Assembly-CSharp
-        m_MethodName: OnClick
-        m_Mode: 1
-        m_Arguments:
-          m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
-          m_IntArgument: 0
-          m_FloatArgument: 0
-          m_StringArgument: 
-          m_BoolArgument: 0
-        m_CallState: 2
+      m_Calls: []
 --- !u!114 &313193618
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -852,7 +827,6 @@ GameObject:
   - component: {fileID: 494974748}
   - component: {fileID: 494974747}
   - component: {fileID: 494974746}
-  - component: {fileID: 494974745}
   m_Layer: 5
   m_Name: Restart
   m_TagString: Untagged
@@ -880,18 +854,6 @@ RectTransform:
   m_AnchoredPosition: {x: -310.00012, y: 218.00003}
   m_SizeDelta: {x: 260, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
---- !u!114 &494974745
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 494974743}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 233309499685e704291ab735433ebeef, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!114 &494974746
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -935,19 +897,7 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 494974747}
   m_OnClick:
     m_PersistentCalls:
-      m_Calls:
-      - m_Target: {fileID: 494974745}
-        m_TargetAssemblyTypeName: QuitGame, Assembly-CSharp
-        m_MethodName: OnClick
-        m_Mode: 1
-        m_Arguments:
-          m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
-          m_IntArgument: 0
-          m_FloatArgument: 0
-          m_StringArgument: 
-          m_BoolArgument: 0
-        m_CallState: 2
+      m_Calls: []
 --- !u!114 &494974747
 MonoBehaviour:
   m_ObjectHideFlags: 0
