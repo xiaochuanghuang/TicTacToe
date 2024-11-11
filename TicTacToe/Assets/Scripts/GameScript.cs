@@ -71,16 +71,16 @@ public class GameScript : MonoBehaviour
 
     public void Spawn(GameObject EmptyCell, int id)
     {
-        if (!isPlayerTurn) return;
+        // 如果不是玩家回合或者该格子已经被占用，直接返回
+        if (!isPlayerTurn || BoardState[id] != Seed.EMPTY) return;
+
         if (currentTurn == Seed.CROSS)
         {
             PlayerMove(EmptyCell, id, Seed.CROSS);
-
-            // 检查是否平局或胜利，如果没有则自动调用 AI 回合
             if (currentTurn == Seed.NOUGHT && GameMode == "PVE" && !IsDraw() && !CheckWin(Seed.CROSS))
             {
-                isPlayerTurn = false; // 禁用玩家输入
-                StartCoroutine(DelayedAIMove(0.5f));
+                isPlayerTurn = false;
+                StartCoroutine(DelayedAIMove(0.2f));
             }
         }
         else if (currentTurn == Seed.NOUGHT && GameMode == "PVP")
@@ -94,7 +94,7 @@ public class GameScript : MonoBehaviour
         // 检查是否为平局
         if (IsDraw() && currentTurn != Seed.EMPTY)
         {
-            EndGame("Draw"); 
+            EndGame("Draw");
         }
     }
     // 延迟 AI 回合的协程
@@ -187,6 +187,7 @@ public class GameScript : MonoBehaviour
         // 显示按钮
         RestartButton.gameObject.SetActive(true);
         MainMenuButton.gameObject.SetActive(true);
+        isPlayerTurn = false;
     }
     private void RestartGame()
     {
