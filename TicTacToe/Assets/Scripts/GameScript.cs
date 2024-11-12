@@ -61,7 +61,7 @@ public class GameScript : MonoBehaviour
             BoardState[i] = Seed.EMPTY;
         }
 
-        // 隐藏重启和返回主菜单按钮
+        // 隐藏重新开始游戏和返回主菜单按钮
         RestartButton.gameObject.SetActive(false);
         MainMenuButton.gameObject.SetActive(false);
 
